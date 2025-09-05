@@ -41,9 +41,7 @@ from urllib.parse import unquote_plus
 # Log parsing
 # -----------------------------
 LOG_RE: Pattern[str] = re.compile(
-    r"^(?P<ip>\S+)\s+\S+\s+\S+\s+\[(?P<time>[^\]]+)\]\s+\"(?P<method>[A-Z]+)\s+(?P<path>[^\s\"]+)\s+(?P<proto>HTTP/[^\"]+)\"
-\s+(?P<status>\d{3})\s+(?P<size>\S+)\s+\"(?P<ref>[^\"]*)\"\s+\"(?P<ua>[^\"]*)\""
-)
+    r"^(?P<ip>\S+)\s+\S+\s+\S+\s+\[(?P<time>[^\]]+)\]\s+\"(?P<method>[A-Z]+)\s+(?P<path>[^\s\"]+)\s+(?P<proto>HTTP/[^\"]+)\"\s+(?P<status>\d{3})\s+(?P<size>\S+)\s+\"(?P<ref>[^\"]*)\"\s+\"(?P<ua>[^\"]*)\"")
 
 APACHE_TIME_RE: Pattern[str] = re.compile(r"(\d{2})/(\w{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})")
 MONTHS = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
@@ -98,8 +96,7 @@ FORBIDDEN_REGEX = [re.compile(p, re.IGNORECASE) for p in FORBIDDEN_PATHS]
 # Core detector
 # -----------------------------
 class Detector:
-    def __init__(self, threshold: int, window_seconds: int, patterns: Iterable[str], suspicious_ua: Iterable[str], count_sta
-tus: bool = True):
+    def __init__(self, threshold: int, window_seconds: int, patterns: Iterable[str], suspicious_ua: Iterable[str], count_status: bool = True):
         self.threshold = threshold
         self.window = timedelta(seconds=window_seconds)
         self.patterns = [re.compile(p) for p in patterns]
@@ -173,10 +170,8 @@ class Blocker:
         self._log_event(f"Blocking {ip}: {reason} -> {cmd}")
         try:
             parts = cmd if isinstance(cmd, list) else cmd.split()
-            result = subprocess.run(parts, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=Fa
-lse)
-            self._log_event(f"Command exit {result.returncode}: stdout={result.stdout.strip()} stderr={result.stderr.strip()
-}")
+            result = subprocess.run(parts, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=False)
+            self._log_event(f"Command exit {result.returncode}: stdout={result.stdout.strip()} stderr={result.stderr.strip()}")
             if result.returncode == 0:
                 self.blocked.add(ip)
         except Exception as e:
