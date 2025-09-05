@@ -78,7 +78,7 @@ SUSPICIOUS_STATUS = {401, 403, 404, 405, 408, 418, 429, 500, 501, 502, 503}
 
 FORBIDDEN_PATHS = [
     r"^/wordpress/?",
-    r"^/wp/?",
+    r"^\/wp\/?",
     r"^/new/?",
     r"^/old/?",
     r"^/test/?",
@@ -111,14 +111,19 @@ class Detector:
             decoded = path[:2048]
         for rx in self.patterns:
             if rx.search(decoded):
+                print(f"[DEBUG] Found string in default Pattern: {path}")
                 return True
         for rx in self.ua_patterns:
             if rx.search(ua or ""):
+                print(f"[DEBUG] Found string in User-Agent Pattern: {ua}")
                 return True
         for rx in FORBIDDEN_REGEX:
             if rx.search(decoded):
+                print(f"[DEBUG] Found string in Forbidden Paths: {path}")
                 return True
         if self.count_status and status in SUSPICIOUS_STATUS:
+            print(f"[DEBUG] Found suspicious status code: {status}")
+
             return True
         return False
 
