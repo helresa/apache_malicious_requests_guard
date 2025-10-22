@@ -68,7 +68,7 @@ DEFAULT_PATTERNS = [
     r"(?i)(\.(env|git|svn)|/\.env|/\.git|/wp-config.php|/composer\.json)",
     r"(?i)(/phpmyadmin|/pma|/mysqladmin|/adminer\.php)",
     r"(?i)(\.\./|%2e%2e/|%252e%252e/)",
-    r"(?i)(/wp-login\.php|/xmlrpc\.php|/wp-json|/wp-admin)",
+    r"(?i)(/wp-login\.php|/xmlrpc\.php)",
     r"(?i)(/\.vscode/|/id_rsa|/\.ssh/|/keys?\.txt)",
     r"(?i)(/\.DS_Store|/server-status|/owa|/actuator|/jmx)",
     r"(?i)(select\s+.*from\s+|insert\s+into\s+|update\s+\w+\s+set)"
@@ -192,19 +192,44 @@ signal.signal(signal.SIGTERM, handle_sigint)
 
 def follow(path: str, from_start: bool = False):
     print(f"[DEBUG] Opening log file for tailing: {path}")
-    while not os.path.exists(path):
-        time.sleep(0.5)
-    with open(path, 'r', errors='replace') as f:
-        if not from_start:
-            f.seek(0, os.SEEK_END)
-        while not STOP:
-            where = f.tell()
-            line = f.readline()
-            if not line:
-                time.sleep(0.25)
-                f.seek(where)
-            else:
+    last_inode = None
+
+    while not STOP:
+        while not os.path.exists(path):
+            time.sleep(0.5)
+
+        try:
+            f = open(path, 'r', errors='replace')
+            stat = os.fstat(f.fileno())
+            inode = stat.st_ino
+            last_inode = inode
+            if not from_start:
+                f.seek(0, os.SEEK_END)
+            print(f"[DEBUG] Now tailing {path} (inode={inode})")
+
+            while not STOP:
+                line = f.readline()
+                if not line:
+                    time.sleep(0.25)
+                    # check for rotation or replacement
+                    try:
+                        new_inode = os.stat(path).st_ino
+                        if new_inode != last_inode:
+                            print(f"[DEBUG] Detected log rotation for {path}, reopening...")
+                            break
+                    except FileNotFoundError:
+                        print(f"[DEBUG] Log file {path} temporarily missing, waiting...")
+                        break
+                    continue
                 yield line
+        except Exception as e:
+            print(f"[DEBUG] Error following {path}: {e}")
+        finally:
+            try:
+                f.close()
+            except Exception:
+                pass
+        time.sleep(1)
 
 def follow_many(logdir: str, from_start: bool = False):
     q = queue.Queue()
