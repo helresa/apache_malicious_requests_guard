@@ -41,8 +41,7 @@ from urllib.parse import unquote_plus
 # Log parsing
 # -----------------------------
 LOG_RE: Pattern[str] = re.compile(
-    r"^(?P<ip>\S+)\s+\S+\s+\S+\s+\[(?P<time>[^\]]+)\]\s+\"(?P<method>[A-Z]+)\s+(?P<path>[^\s\"]+)\s+(?P<proto>HTTP/[^\"]+)\"\s+(?P<status>\d{3})\s+(?P<size>\S+)\s+\"(?P<ref>[^\"]*)\"\s+\"(?P<ua>[^\"]*)\""
-)
+    r"^(?P<ip>\S+)\s+\S+\s+\S+\s+\[(?P<time>[^\]]+)\]\s+\"(?P<method>[A-Z]+)\s+(?P<path>[^\s\"]+)\s+(?P<proto>HTTP/[^\"]+)\"\s+(?P<status>\d{3})\s+(?P<size>\S+)\s+\"(?P<ref>[^\"]*)\"\s+\"(?P<ua>[^\"]*)\"")
 
 APACHE_TIME_RE: Pattern[str] = re.compile(r"(\d{2})/(\w{3})/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-]\d{4})")
 MONTHS = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
@@ -78,18 +77,18 @@ SUSPICIOUS_UA = [r"(?i)(sqlmap|nikto|nmap|acunetix|nessus|dirbuster|curl/|python
 SUSPICIOUS_STATUS = {401, 403, 404, 405, 408, 418, 429, 500, 501, 502, 503}
 
 FORBIDDEN_PATHS = [
-    r"^/wordpress/?",
-    r"^/wp/?",
-    r"^/new/?",
-    r"^/old/?",
-    r"^/test/?",
-    r"^/backup/?",
-    r"^/bk/?",
-    r"^/private/?",
-    r"^/tmp/?",
-    r"^/etc/",
-    r"^/root/",
-    r"^/proc/",
+r"^/wordpress/?$",
+r"^/wp/?$",
+r"^/new/?$",
+r"^/old/?$",
+r"^/test/?$",
+r"^/backup/?$",
+r"^/bk/?$",
+r"^/private/?$",
+r"^/tmp/?$",
+r"^/etc/?$",
+r"^/root/?$",
+r"^/proc/?$",
 ]
 FORBIDDEN_REGEX = [re.compile(p, re.IGNORECASE) for p in FORBIDDEN_PATHS]
 
@@ -112,14 +111,18 @@ class Detector:
             decoded = path[:2048]
         for rx in self.patterns:
             if rx.search(decoded):
+                print(f"[DEBUG] Found string in default Pattern: {path}")
                 return True
         for rx in self.ua_patterns:
             if rx.search(ua or ""):
+                print(f"[DEBUG] Found string in User-Agent Pattern: {ua}")
                 return True
         for rx in FORBIDDEN_REGEX:
             if rx.search(decoded):
+                print(f"[DEBUG] Found string in Forbidden Paths: {path}")
                 return True
         if self.count_status and status in SUSPICIOUS_STATUS:
+            print(f"[DEBUG] Found suspicious status code: {status}")
             return True
         return False
 
